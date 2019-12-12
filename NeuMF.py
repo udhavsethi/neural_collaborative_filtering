@@ -1,7 +1,7 @@
 '''
 Created on Aug 9, 2016
 Keras Implementation of Neural Matrix Factorization (NeuMF) recommender model in:
-He Xiangnan et al. Neural Collaborative Filtering. In WWW 2017.  
+He Xiangnan et al. Neural Collaborative Filtering. In WWW 2017.
 
 @author: Xiangnan He (xiangnanhe@gmail.com)
 '''
@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument('--layers', nargs='?', default='[64,32,16,8]',
                         help="MLP layers. Note that the first layer is the concatenation of user and item embeddings. So layers[0]/2 is the embedding size.")
     parser.add_argument('--reg_mf', type=float, default=0,
-                        help='Regularization for MF embeddings.')                    
+                        help='Regularization for MF embeddings.')
     parser.add_argument('--reg_layers', nargs='?', default='[0,0,0,0]',
                         help="Regularization for each MLP layer. reg_layers[0] is the regularization for embeddings.")
     parser.add_argument('--num_neg', type=int, default=4,
@@ -68,24 +68,24 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
     # Input variables
     user_input = Input(shape=(1,), dtype='int32', name = 'user_input')
     item_input = Input(shape=(1,), dtype='int32', name = 'item_input')
-    
+
     # Embedding layer
     MF_Embedding_User = Embedding(input_dim = num_users, output_dim = mf_dim, name = 'mf_embedding_user',
                                   init = init_normal, W_regularizer = l2(reg_mf), input_length=1)
     MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = mf_dim, name = 'mf_embedding_item',
-                                  init = init_normal, W_regularizer = l2(reg_mf), input_length=1)   
+                                  init = init_normal, W_regularizer = l2(reg_mf), input_length=1)
 
     MLP_Embedding_User = Embedding(input_dim = num_users, output_dim = layers[0]/2, name = "mlp_embedding_user",
                                   init = init_normal, W_regularizer = l2(reg_layers[0]), input_length=1)
     MLP_Embedding_Item = Embedding(input_dim = num_items, output_dim = layers[0]/2, name = 'mlp_embedding_item',
-                                  init = init_normal, W_regularizer = l2(reg_layers[0]), input_length=1)   
-    
+                                  init = init_normal, W_regularizer = l2(reg_layers[0]), input_length=1)
+
     # MF part
     mf_user_latent = Flatten()(MF_Embedding_User(user_input))
     mf_item_latent = Flatten()(MF_Embedding_Item(item_input))
     mf_vector = merge([mf_user_latent, mf_item_latent], mode = 'mul') # element-wise multiply
 
-    # MLP part 
+    # MLP part
     mlp_user_latent = Flatten()(MLP_Embedding_User(user_input))
     mlp_item_latent = Flatten()(MLP_Embedding_Item(item_input))
     mlp_vector = merge([mlp_user_latent, mlp_item_latent], mode = 'concat')
@@ -97,13 +97,13 @@ def get_model(num_users, num_items, mf_dim=10, layers=[10], reg_layers=[0], reg_
     #mf_vector = Lambda(lambda x: x * alpha)(mf_vector)
     #mlp_vector = Lambda(lambda x : x * (1-alpha))(mlp_vector)
     predict_vector = merge([mf_vector, mlp_vector], mode = 'concat')
-    
+
     # Final prediction layer
     prediction = Dense(1, activation='sigmoid', init='lecun_uniform', name = "prediction")(predict_vector)
-    
-    model = Model(input=[user_input, item_input], 
+
+    model = Model(input=[user_input, item_input],
                   output=prediction)
-    
+
     return model
 
 def load_pretrain_model(model, gmf_model, mlp_model, num_layers):
@@ -112,24 +112,24 @@ def load_pretrain_model(model, gmf_model, mlp_model, num_layers):
     gmf_item_embeddings = gmf_model.get_layer('item_embedding').get_weights()
     model.get_layer('mf_embedding_user').set_weights(gmf_user_embeddings)
     model.get_layer('mf_embedding_item').set_weights(gmf_item_embeddings)
-    
+
     # MLP embeddings
     mlp_user_embeddings = mlp_model.get_layer('user_embedding').get_weights()
     mlp_item_embeddings = mlp_model.get_layer('item_embedding').get_weights()
     model.get_layer('mlp_embedding_user').set_weights(mlp_user_embeddings)
     model.get_layer('mlp_embedding_item').set_weights(mlp_item_embeddings)
-    
+
     # MLP layers
     for i in xrange(1, num_layers):
         mlp_layer_weights = mlp_model.get_layer('layer%d' %i).get_weights()
         model.get_layer('layer%d' %i).set_weights(mlp_layer_weights)
-        
+
     # Prediction weights
     gmf_prediction = gmf_model.get_layer('prediction').get_weights()
     mlp_prediction = mlp_model.get_layer('prediction').get_weights()
     new_weights = np.concatenate((gmf_prediction[0], mlp_prediction[0]), axis=0)
     new_b = gmf_prediction[1] + mlp_prediction[1]
-    model.get_layer('prediction').set_weights([0.5*new_weights, 0.5*new_b])    
+    model.get_layer('prediction').set_weights([0.5*new_weights, 0.5*new_b])
     return model
 
 def get_train_instances(train, num_negatives):
@@ -164,8 +164,8 @@ if __name__ == '__main__':
     verbose = args.verbose
     mf_pretrain = args.mf_pretrain
     mlp_pretrain = args.mlp_pretrain
-            
-    topK = 5
+
+    topK = 10
     evaluation_threads = 1#mp.cpu_count()
     print("NeuMF arguments: %s " %(args))
     model_out_file = 'Pretrain/%s_NeuMF_%d_%s_%d.h5' %(args.dataset, mf_dim, args.layers, time())
@@ -175,12 +175,12 @@ if __name__ == '__main__':
     dataset = Dataset(args.path + args.dataset)
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     num_users, num_items = train.shape
-    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" 
+    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
           %(time()-t1, num_users, num_items, train.nnz, len(testRatings)))
-    
+
     # Build model
     model = get_model(num_users, num_items, mf_dim, layers, reg_layers, reg_mf)
-    if learner.lower() == "adagrad": 
+    if learner.lower() == "adagrad":
         model.compile(optimizer=Adagrad(lr=learning_rate), loss='binary_crossentropy')
     elif learner.lower() == "rmsprop":
         model.compile(optimizer=RMSprop(lr=learning_rate), loss='binary_crossentropy')
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         model.compile(optimizer=Adam(lr=learning_rate), loss='binary_crossentropy')
     else:
         model.compile(optimizer=SGD(lr=learning_rate), loss='binary_crossentropy')
-    
+
     # Load pretrain model
     if mf_pretrain != '' and mlp_pretrain != '':
         gmf_model = GMF.get_model(num_users,num_items,mf_dim)
@@ -197,32 +197,32 @@ if __name__ == '__main__':
         mlp_model.load_weights(mlp_pretrain)
         model = load_pretrain_model(model, gmf_model, mlp_model, len(layers))
         print("Load pretrained GMF (%s) and MLP (%s) models done. " %(mf_pretrain, mlp_pretrain))
-        
+
     # Init performance
     (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     if args.out > 0:
-        model.save_weights(model_out_file, overwrite=True) 
-        
+        model.save_weights(model_out_file, overwrite=True)
+
     # Training model
     for epoch in xrange(num_epochs):
         t1 = time()
         # Generate training instances
         user_input, item_input, labels = get_train_instances(train, num_negatives)
-        
+
         # Training
         hist = model.fit([np.array(user_input), np.array(item_input)], #input
-                         np.array(labels), # labels 
+                         np.array(labels), # labels
                          batch_size=batch_size, nb_epoch=1, verbose=0, shuffle=True)
         t2 = time()
-        
+
         # Evaluation
         if epoch %verbose == 0:
             (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
             hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
-            print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' 
+            print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]'
                   % (epoch,  t2-t1, hr, ndcg, loss, time()-t2))
             if hr > best_hr:
                 best_hr, best_ndcg, best_iter = hr, ndcg, epoch
